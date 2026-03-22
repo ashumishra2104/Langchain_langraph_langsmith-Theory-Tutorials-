@@ -18,6 +18,7 @@ major new capability. Read them in order to trace the full architectural journey
 | V1 — Basic | [Basic Agent](./Blog%20Agent/Basic%20Agent/) | LangGraph nodes, shared State, `Send()` parallel execution |
 | V2 — Improved | [Improved Agent](./Blog%20Agent/Improved%20Agent/) | Orchestration, Pydantic models, map-reduce, engineering-grade prompts |
 | V3 — Research | [Research Agent](./Blog%20Agent/Research%20Agent/) | **Tavily web search**, smart research router, grounding policy, citation rules |
+| V4 — Images & UI | [V4 - Image & Research Agent](./Blog%20Agent/V4%20-%20Image%20&%20Research%20Agent/) | **AI Image Generation (Gemini)**, **Streamlit Web UI**, date-aware research, reducer subgraph |
 
 ---
 
@@ -69,6 +70,27 @@ The most advanced version. The agent can now **read the live web** before writin
 
 ---
 
+#### 🔵 [V4 — Image & Research Agent](./Blog%20Agent/V4%20-%20Image%20&%20Research%20Agent/) ← **LATEST**
+
+The most powerful version. The agent now **designs technical diagrams** and packages everything in a **Streamlit Web UI**.
+
+**You will learn:**
+- **AI Image Planning**: How an LLM acts as a technical editor to decide *where* visuals improve the blog
+- **Gemini 2.5 Flash Integration**: Generating high-fidelity PNG bytes directly from prompts
+- **3-Node Reducer Subgraph**: `merge_content` → `decide_images` → `generate_and_place_images`
+- **Streamlit Frontend**: Building a 5-tab dashboard for non-technical users to generate and preview blogs
+- **Date-Aware Research**: Filtering EvidenceItems by recency to prevent citing stale news in roundups
+- **Graceful Fallbacks**: Ensuring the blog remains readable even if an image generation fails
+- **Bundle Packaging**: Creating `.zip` downloads containing both the `.md` and the `images/` assets
+
+**New nodes:** `reducer_subgraph` (subgraph-as-a-node)
+
+**New tools:** `google-genai` · `streamlit` · `pandas`
+
+**Stack:** V3 stack + Google Gemini AI SDK + Streamlit framework
+
+---
+
 ### 2. [Theory](./Theory/)
 
 Deep dives into the underlying mechanics that power every agent in this repo.
@@ -87,7 +109,9 @@ Deep dives into the underlying mechanics that power every agent in this repo.
 |---|---|
 | **Agent Framework** | LangGraph, LangChain |
 | **LLM** | OpenAI GPT-4o-mini |
-| **Web Search** | Tavily (V3 only) |
+| **Image Model** | Google Gemini 2.5 Flash (V4 only) |
+| **Web Search** | Tavily (V3+ only) |
+| **UI Framework** | Streamlit (V4 only) |
 | **Data Validation** | Pydantic v2 |
 | **Environment** | Python 3.10+, python-dotenv |
 | **Output** | Markdown (`.md`) files saved to disk |
@@ -145,7 +169,7 @@ Follow this order to build up skills progressively:
         ↓
 4. Research Agent   → Go beyond training data: router, Tavily, grounding policy
         ↓
-5. V4 Challenge     → Add human-in-the-loop approval before workers start (??)
+5. Image & UI Agent → Final form: AI diagrams, Streamlit UI, date-aware research
 ```
 
 Each version is designed so you can read the Python file top-to-bottom and understand every decision. Comments explain **why**, not just what.
@@ -167,6 +191,11 @@ Each version is designed so you can read the Python file top-to-bottom and under
 | Grounding policy & citation rules | V3 |
 | Dual deduplication (LLM + Python) | V3 |
 | Mode-aware planning | V3 |
+| Reducer Subgraph (3-node) | V4 |
+| AI Image Generation (Gemini) | V4 |
+| Technical Image Planning | V4 |
+| Streamlit Web UI | V4 |
+| Date-aware Research Filtering | V4 |
 
 ---
 

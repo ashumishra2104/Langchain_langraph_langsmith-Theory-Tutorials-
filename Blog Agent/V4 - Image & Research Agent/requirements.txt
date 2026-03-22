@@ -1,0 +1,10 @@
+langgraph
+langchain-openai
+langchain-community
+pydantic
+python-dotenv
+google-genai
+streamlit
+pandas
+pypdf
+EOF
