@@ -3,7 +3,7 @@ from langgraph.constants import Send
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
-from typing import TypedDict, List, Annotated, Literal
+from typing import TypedDict, List, Annotated, Literal, Dict
 from pathlib import Path
 import operator
 from dotenv import load_dotenv
@@ -15,13 +15,13 @@ load_dotenv()
 
 class Task(BaseModel):
     """Represents a single section of the blog post."""
-    id: int = Field(description="Unique identifier for the section")
+    id: int = Field(description="Unique identifier for the section (used for ordering)")
     title: str = Field(description="The heading for this blog section")
     goal: str = Field(description="A one-sentence description of the intended reader takeaway")
     bullets: List[str] = Field(
         description="3 to 5 concrete, specific subpoints to cover in this section",
-        min_items=3,
-        max_items=5
+        min_length=3,
+        max_length=5
     )
     target_words: int = Field(
         description="Target word count for this section (120-450)",
@@ -45,7 +45,8 @@ class State(TypedDict):
     """The shared memory/state of the LangGraph agent."""
     topic: str
     plan: Plan
-    sections: Annotated[List[str], operator.add]
+    # We use a dictionary for sections to ensure we can order them by ID regardless of finish order
+    sections: Annotated[Dict[int, str], operator.ior]
     final: str
 
 # --- LLM SETUP ---
@@ -58,21 +59,16 @@ def orchestrator(state: State):
     """Master node that reads the topic, generates a structured Plan."""
     print(f"--- ORCHESTRATOR: Planning for topic '{state['topic']}' ---")
     
-    # Define a high-precision engineering prompt
     system_prompt = (
         "You are a Senior Technical Writer and Developer Advocate at a top-tier tech company. "
         "Your task is to plan a high-impact, technical blog post on a given topic. "
         "The plan must be rigorous, practical, and highly structured to avoid vague content.\n\n"
         "HARD REQUIREMENTS:\n"
         "1. Produce 5 to 7 sections (tasks) using the Plan model.\n"
-        "2. Each section MUST have a goal (one sentence on reader takeaway), 3-5 concrete, non-overlapping bullets, "
-        "a target word count (120-450), and a strictly enforced section_type.\n"
-        "3. You MUST include EXACTLY ONE section with section_type = 'common_mistakes'.\n"
-        "4. Follow the logical flow: Problem → Intuition → Approach → Implementation → Trade-offs → Testing/Observability → Conclusion.\n"
-        "5. Bullets MUST be actionable and testable. Avoid 'Discuss X' or 'Explain Y'. "
-        "Use 'Step-by-step implementation of Z', 'Analyzing O(n) complexity of P', 'Tracing memory leaks in Q'.\n"
-        "6. The plan must cover at least one of: working examples, edge cases, performance/cost, security, or debugging tips.\n"
-        "7. Ensure the audience is developers. Use precise terminology."
+        "2. Each section MUST have a UNIQUE sequential ID (1, 2, 3...) for ordering.\n"
+        "3. Each section MUST have a goal, 3-5 concrete bullets, and a target word count.\n"
+        "4. Follow the logical flow: Problem → Intuition → Approach → Implementation → Trade-offs → Testing → Conclusion.\n"
+        "5. The plan must cover at least one of: code examples, edge cases, or debugging tips.\n"
     )
     
     # Force structured output
@@ -98,45 +94,27 @@ def worker(payload: dict):
     bullets_str = "\n".join([f"- {b}" for b in task.bullets])
     
     system_prompt = (
-        "You are a Senior Technical Writer and Developer Advocate. "
-        "Your task is to write ONE section of a high-quality technical blog post in Markdown.\n\n"
+        "You are a Senior Technical Writer. Write ONE section of a technical blog post in Markdown.\n\n"
         "HARD CONSTRAINTS:\n"
         f"1. Follow the Goal: {task.goal}\n"
-        "2. Cover ALL the provided Bullets in order.\n"
-        f"3. Stay within ±15% of the target word count ({task.target_words} words).\n"
-        "4. Output ONLY the section content in Markdown. No extra commentary or intro/outro.\n\n"
-        "TECHNICAL QUALITY BAR:\n"
-        "- Be precise and implementation-oriented. Prefer concrete details (APIs, data structures) over abstractions.\n"
-        "- When relevant, include a small code snippet, example input/output, or a clear checklist.\n"
-        "- Explain trade-offs (performance, cost, complexity) and call out edge cases/failure modes.\n"
-        "- If you mention a best practice, always add the 'why'.\n\n"
-        "MARKDOWN STYLE:\n"
-        f"- Start with a '## {task.title}' heading.\n"
-        "- Use short paragraphs and bullet lists where helpful.\n"
-        "- Use code fences for all code examples. Avoid marketing fluff."
+        f"2. Stay within word count range: {task.target_words} words ±15%.\n"
+        "3. Output ONLY the section content. Start with a '## [Title]' heading.\n"
     )
     
     human_message = (
-        f"Context for the full blog:\n"
-        f"- Title: {plan.blog_title}\n"
-        f"- Audience: {plan.audience}\n"
-        f"- Tone: {plan.tone}\n"
-        f"- Main Topic: {topic}\n\n"
-        f"Section Details:\n"
-        f"- Title: {task.title}\n"
-        f"- Type: {task.section_type}\n"
-        f"- Goal: {task.goal}\n"
-        f"- Target Word Count: {task.target_words}\n"
-        f"- Required Bullets:\n{bullets_str}"
+        f"Main Topic: {topic}\n"
+        f"Section Title: {task.title}\n"
+        f"Goal: {task.goal}\n"
+        f"Required Bullets:\n{bullets_str}"
     )
     
-    # Generate content (raw markdown)
     response = llm.invoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=human_message)
     ])
     
-    return {"sections": [response.content]}
+    # Return dictionary indexed by task ID to preserve order in the reducer
+    return {"sections": {task.id: response.content}}
 
 def fanout(state: State):
     """Dispatcher function that launches parallel workers for each task."""
@@ -147,52 +125,39 @@ def fanout(state: State):
     ]
 
 def reducer(state: State):
-    """Final node that compiles sections and saves the blog post."""
+    """Final node that compiles sections in CORRECT order and saves the blog."""
     print("--- REDUCER: Compiling final blog post ---")
     
     title = state["plan"].blog_title
-    # Join sections (they are strings in the 'sections' list)
-    compiled_body = "\n\n".join(state["sections"])
     
+    # Sort sections by their ID to ensure the final blog is in the planned order
+    sorted_ids = sorted(state.get("sections", {}).keys())
+    ordered_content = [state["sections"][i] for i in sorted_ids]
+    
+    compiled_body = "\n\n".join(ordered_content)
     final_markdown = f"# {title}\n\n{compiled_body}"
     
-    # Generate filename: lowercase, underscore spaces, alpha-numeric only
+    # Save to file
     safe_name = "".join([c if c.isalnum() else "_" for c in title.lower()])
     file_path = Path(f"{safe_name}.md")
-    
-    # Save to file
     file_path.write_text(final_markdown)
-    print(f"--- DONE: Blog post saved to '{file_path}' ---")
     
+    print(f"--- DONE: Blog post saved to '{file_path}' ---")
     return {"final": final_markdown}
 
 # --- GRAPH CONSTRUCTION ---
 
-# 1. Create the graph
 workflow = StateGraph(State)
 
-# 2. Add nodes
 workflow.add_node("orchestrator", orchestrator)
 workflow.add_node("worker", worker)
 workflow.add_node("reducer", reducer)
 
-# 3. Add edges
 workflow.add_edge(START, "orchestrator")
-
-# Use conditional edges for fan-out logic
-workflow.add_conditional_edges(
-    "orchestrator",
-    fanout,
-    ["worker"]
-)
-
-# After workers are done, send them to the reducer
+workflow.add_conditional_edges("orchestrator", fanout, ["worker"])
 workflow.add_edge("worker", "reducer")
-
-# Finish at END
 workflow.add_edge("reducer", END)
 
-# 4. Compile the graph
 app = workflow.compile()
 
 # --- EXECUTION ---
@@ -200,24 +165,17 @@ app = workflow.compile()
 if __name__ == "__main__":
     import os
     
-    # Check if OPENAI_API_KEY is set
-    if not os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") == "your_openai_api_key_here":
+    if not os.getenv("OPENAI_API_KEY") or "your_openai_api_key_here" in os.getenv("OPENAI_API_KEY"):
         print("\n[!] ERROR: Please set your OPENAI_API_KEY in the .env file before running.")
     else:
-        topic = "Write a blog on Self Attention"
-        print(f"--- STARTING AGENT for topic: '{topic}' ---")
+        topic = "History of Sound and Music generation using AI"
+        print(f"\n--- STARTING AGENT for topic: '{topic}' ---")
         
-        # Run the agent
-        initial_state = {"topic": topic, "sections": []}
+        # Initialize state with an empty dictionary for sections
+        initial_state = {"topic": topic, "sections": {}}
         result = app.invoke(initial_state)
         
-        # Output results
-        print("\n" + "="*50)
-        print("FINAL BLOG POST:")
-        print("="*50 + "\n")
-        print(result["final"])
-        
-        # Verify file save (file name is derived from plan.blog_title in reducer)
+        # Verify file save
         title = result["plan"].blog_title
         safe_name = "".join([c if c.isalnum() else "_" for c in title.lower()])
         print(f"\n[✓] Success! Markdown file saved as: {safe_name}.md")
