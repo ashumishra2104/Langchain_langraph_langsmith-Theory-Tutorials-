@@ -1,40 +1,173 @@
-# LangChain, LangGraph, & LangSmith: Theory and Tutorials
+# LangChain, LangGraph & LangSmith — Theory and Tutorials
 
-Welcome to the **LangChain, LangGraph, and LangSmith Theory-Tutorials** repository. This project is a comprehensive guide to building advanced, production-grade AI agents, starting from basic "Vibe Coding" to complex Graph-based architectures.
+> A progressive, hands-on journey from basic AI agents to production-grade,
+> research-augmented systems — built with the **Vibe Coding** method.  
+> **Author:** [Ashu Mishra](https://github.com/ashumishra2104) · AI PM Cohort
+
+---
 
 ## 📁 Repository Structure
 
-### 1. [Blog Agent](./Blog%20Agent/)
-A multi-stage evolution of an AI blog writing agent:
-- **[Basic Agent (V1)](./Blog%20Agent/Basic%20Agent/)**: Introduction to LangGraph nodes, shared state, and parallel execution using `Send()`.
-- **[Improved Agent (V2)](./Blog%20Agent/Improved%20Agent/)**: Advanced implementation featuring orchestration, engineering-grade prompting, map-reduce patterns, and structured data validation with Pydantic.
+### 1. [Blog Agent](./Blog%20Agent/) — Three-Generation Evolution
 
-### 2. [Theory](./Theory/)
-Deep dives into the underlying mechanics:
-- **LangGraph Architecture**: Understanding cycles, persistence, and state management.
-- **Agentic Workflows**: Moving beyond simple chains to autonomous agents.
-- **LangSmith Tracing**: Best practices for debugging and evaluating your agentic logic.
+An AI blog-writing agent that has evolved across three versions, each adding a
+major new capability. Read them in order to trace the full architectural journey.
 
-## 🛠️ Tech Stack
-- **Frameworks**: LangGraph, LangChain
-- **Models**: OpenAI (GPT-4o, GPT-4o-mini)
-- **Data Modeling**: Pydantic
-- **Environment**: Python 3.10+, Dotenv
-
-## 🚦 Getting Started
-Each folder contains its own `README.md` and `requirements.txt`. Generally, you can get started by:
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/ashumishra2104/Langchain_langraph_langsmith-Theory-Tutorials-.git
-   ```
-2. **Setup your API Keys**:
-   Create a `.env` file in the relevant sub-folder with your `OPENAI_API_KEY`.
-
-## 📈 Learning Path
-1. Start with the **[Theory](./Theory/)** folder to understand the "Why" behind graphs.
-2. Build the **[Basic Agent](./Blog%20Agent/Basic%20Agent/)** to learn the "How."
-3. Graduate to the **[Improved Agent](./Blog%20Agent/Improved%20Agent/)** to master "Production Optimization."
+| Version | Folder | What's New |
+|---|---|---|
+| V1 — Basic | [Basic Agent](./Blog%20Agent/Basic%20Agent/) | LangGraph nodes, shared State, `Send()` parallel execution |
+| V2 — Improved | [Improved Agent](./Blog%20Agent/Improved%20Agent/) | Orchestration, Pydantic models, map-reduce, engineering-grade prompts |
+| V3 — Research | [Research Agent](./Blog%20Agent/Research%20Agent/) | **Tavily web search**, smart research router, grounding policy, citation rules |
 
 ---
-*Created and maintained by [ashumishra2104](https://github.com/ashumishra2104).*
+
+#### 🟢 [V1 — Basic Agent](./Blog%20Agent/Basic%20Agent/)
+
+The entry point. Introduces the core LangGraph primitives with zero prior experience required.
+
+**You will learn:**
+- What a `StateGraph` is and how nodes communicate through shared State
+- How to run sections in parallel with `Send()` and collect results with `operator.add`
+- How to save a blog post to disk as a `.md` file
+
+**Stack:** `langgraph` · `langchain-openai` · `pydantic` · `python-dotenv`
+
+---
+
+#### 🟡 [V2 — Improved Agent](./Blog%20Agent/Improved%20Agent/)
+
+Upgrades the V1 agent with production-level techniques.
+
+**You will learn:**
+- Orchestrator → parallel workers → compiler pattern (map-reduce)
+- Engineering-grade prompt design: tone, audience, constraint injection
+- Structured output with Pydantic (`Plan`, `Task`) — no manual JSON parsing
+- How to prevent LLM verbosity with word-count budgets per section
+
+**Stack:** V1 stack + advanced Pydantic models + structured LLM output
+
+---
+
+#### 🔴 [V3 — Research Agent](./Blog%20Agent/Research%20Agent/) ← **NEW**
+
+The most advanced version. The agent can now **read the live web** before writing.
+
+**You will learn:**
+- How to build a smart **research router** that decides *when* web search is needed
+- Three research modes: `closed_book` · `hybrid` · `open_book`
+- How **Tavily** differs from standard search APIs — and why it's built for LLMs
+- Dual deduplication: LLM semantic layer + Python URL-key layer
+- **Grounding policy**: how to prevent LLMs from hallucinating specific facts in research-backed content
+- Citation rules: forcing `([Source](URL))` inline links for every verifiable claim
+- Mode-aware planning: the orchestrator shapes the *entire blog structure* differently per mode
+
+**New nodes:** `router_node` → `research_node` → `orchestrator_node` → `worker_node×N` → `reducer_node`
+
+**New tools:** `TavilySearchResults` — LLM-optimised web search API
+
+**Stack:** V2 stack + `tavily-python` + `langchain-community`
+
+---
+
+### 2. [Theory](./Theory/)
+
+Deep dives into the underlying mechanics that power every agent in this repo.
+
+- **LangGraph Architecture** — cycles, persistence, checkpointing, and state management
+- **Agentic Workflows** — moving beyond simple chains to autonomous multi-step agents
+- **LangSmith Tracing** — debugging and evaluating agentic logic in production
+
+📄 [LangGraph Teaching Guide (PDF)](./Theory/LangGraph_Teaching_Guide_new.pdf)
+
+---
+
+## 🛠️ Full Tech Stack
+
+| Category | Tools |
+|---|---|
+| **Agent Framework** | LangGraph, LangChain |
+| **LLM** | OpenAI GPT-4o-mini |
+| **Web Search** | Tavily (V3 only) |
+| **Data Validation** | Pydantic v2 |
+| **Environment** | Python 3.10+, python-dotenv |
+| **Output** | Markdown (`.md`) files saved to disk |
+
+---
+
+## 🚦 Getting Started
+
+Each folder has its own `README.md` and `requirements.txt`.
+
+### Clone the repo
+
+```bash
+git clone https://github.com/ashumishra2104/Langchain_langraph_langsmith-Theory-Tutorials-.git
+cd Langchain_langraph_langsmith-Theory-Tutorials-
+```
+
+### Install dependencies (for your chosen version)
+
+```bash
+# e.g. for V3
+cd "Blog Agent/Research Agent"
+pip install -r requirements.txt
+```
+
+### Add API keys
+
+```bash
+cp .env.example .env
+# Fill in OPENAI_API_KEY and (for V3) TAVILY_API_KEY
+```
+
+Get your keys:
+- **OpenAI** → [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- **Tavily** *(V3 only)* → [app.tavily.com](https://app.tavily.com) — free tier: 1,000 searches/month
+
+### Run
+
+```bash
+python blog_agent_v3.py   # or blog_agent.py for V1/V2
+```
+
+---
+
+## 📈 Learning Path
+
+Follow this order to build up skills progressively:
+
+```
+1. Theory/          → Understand WHY graphs — read before coding
+        ↓
+2. Basic Agent      → Learn HOW: nodes, state, Send(), parallel execution
+        ↓
+3. Improved Agent   → Master prompts, Pydantic, orchestrator pattern
+        ↓
+4. Research Agent   → Go beyond training data: router, Tavily, grounding policy
+        ↓
+5. V4 Challenge     → Add human-in-the-loop approval before workers start (??)
+```
+
+Each version is designed so you can read the Python file top-to-bottom and understand every decision. Comments explain **why**, not just what.
+
+---
+
+## 🔑 Key Concepts Covered
+
+| Concept | Where you learn it |
+|---|---|
+| `StateGraph`, nodes, edges | V1 |
+| `Send()` for parallel fan-out | V1 |
+| `operator.add` reducer | V1 → V3 |
+| `with_structured_output(Pydantic)` | V2 → V3 |
+| Orchestrator → workers → compiler | V2 |
+| Conditional edges | V3 (`route_next`, `fanout`) |
+| Research routing (3 modes) | V3 |
+| Tavily web search integration | V3 |
+| Grounding policy & citation rules | V3 |
+| Dual deduplication (LLM + Python) | V3 |
+| Mode-aware planning | V3 |
+
+---
+
+*Created and maintained by [ashumishra2104](https://github.com/ashumishra2104) · AI PM Cohort*
